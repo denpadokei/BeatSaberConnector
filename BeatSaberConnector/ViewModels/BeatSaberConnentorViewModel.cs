@@ -13,7 +13,7 @@ namespace BeatSaberConnector.ViewModels
         //ﾟ+｡*ﾟ+｡｡+ﾟ*｡+ﾟ ﾟ+｡*ﾟ+｡｡+ﾟ*｡+ﾟ ﾟ+｡*ﾟ+｡*ﾟ+｡｡+ﾟ*｡+ﾟ ﾟ+｡*ﾟ+｡｡+ﾟ*｡+ﾟ ﾟ+｡*ﾟ+｡*ﾟ+｡｡+ﾟ*｡+ﾟ ﾟ+｡*ﾟ+｡｡+ﾟ*｡+ﾟ ﾟ+｡*
         #region // プロパティ
         /// <summary>説明 を取得、設定</summary>
-        private string stateMessage_;
+        private string stateMessage_ = "";
         /// <summary>説明 を取得、設定</summary>
         public string StateMassage
         {
@@ -48,7 +48,7 @@ namespace BeatSaberConnector.ViewModels
         #region // プライベートメソッド
         private void _core_NotificationStateMessage(string obj)
         {
-            var sb = new StringBuilder(this.StateLabel);
+            var sb = new StringBuilder(this.StateMassage);
             sb.Append("\r\n");
             sb.Append(obj);
             this.StateMassage = sb.ToString();

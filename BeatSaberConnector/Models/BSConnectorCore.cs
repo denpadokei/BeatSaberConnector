@@ -1,4 +1,5 @@
-﻿using BeatSaberConnector.ViewModels;
+﻿using BeatSaberConnector.SmpleJsons;
+using BeatSaberConnector.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,10 +17,37 @@ namespace BeatSaberConnector.Models
     {
         public BSConnectorCore()
         {
-            Application.Current.Exit += this.Current_Exit;
+            Application.Current.Exit += this.AppExit;
+            this.client.OnOpen += this.Client_OnOpen;
+            this.client.OnSended += this.Client_OnSended;
+            this.refreshThread = new Thread(new ThreadStart(() =>
+            {
+                while (this.disposedValue == false) {
+                    try {
+                        if ((DateTime.Now - this._lastSendDate).TotalSeconds > 4 && !string.IsNullOrEmpty(this._lastMessage)) {
+                            this._lastMessage = "";
+                            var json = new JSONObject();
+                            json["type"] = "Hidden";
+                            json["text"] = "";
+                            json["sended-at"] = $"{DateTime.Now}";
+                            this.client.SendTextAsync($"{json}");
+                        }
+                        else {
+                            continue;
+                        }
+                    }
+                    catch (Exception) {
+                    }
+                    finally {
+                        Thread.Sleep(10);
+                    }
+                }
+            }));
+            
+            this.refreshThread.Start();
         }
 
-        private void Current_Exit(object sender, ExitEventArgs e)
+        private void AppExit(object sender, ExitEventArgs e)
         {
             this.Dispose();
         }
@@ -32,7 +60,14 @@ namespace BeatSaberConnector.Models
             var result = new YukarinetteFilterPluginResult();
             result.Type = YukarinetteFilterPluginResult.FilterResultType.Normal;
             result.Text = text;
-            client.SendText(text);
+            this._lastSendDate = DateTime.Now;
+            this._lastMessage = text;
+            NotificationStateMessage?.Invoke(text);
+            var json = new JSONObject();
+            json["type"] = "Show";
+            json["text"] = text;
+            json["sended-at"] = $"{DateTime.Now}";
+            client.SendTextAsync($"{json}");
             return result;
         }
 
@@ -42,34 +77,6 @@ namespace BeatSaberConnector.Models
         {
             this.connector.DataContext = new BeatSaberConnentViewModel(this);
             return this.connector;
-        }
-
-        public override void Loaded()
-        {
-            this.client.OnOpen += this.Client_OnOpen;
-            this.client.OnSended += this.Client_OnSended;
-
-            this.connentThread = new Thread(new ThreadStart(() =>
-            {
-                while (this.disposedValue == false) {
-                    try {
-                        if (this.client.ClientSocket.State != WebSocket4Net.WebSocketState.Open) {
-                            continue;
-                        }
-                        else {
-                            this.NotificationStateMessage?.Invoke("BeatSaberに接続します。");
-                            _ = Task.Run(this.client.ClientSocket.Open);
-                        }
-                    }
-                    catch (Exception e) {
-                        this.NotificationStateMessage?.Invoke($"{e}");
-                    }
-                    finally {
-                        Thread.Sleep(3000);
-                    }
-                }
-            }));
-            this.connentThread.Start();
         }
 
         private void Client_OnSended(object sender, SendedEvetArgs e)
@@ -83,8 +90,10 @@ namespace BeatSaberConnector.Models
 
         private BSWebSocketClient client = new BSWebSocketClient();
         private BeatSaberConnectorView connector = new BeatSaberConnectorView();
-        private Thread connentThread;
+        private Thread refreshThread;
         private bool disposedValue;
+        private string _lastMessage;
+        private DateTime _lastSendDate;
 
         protected virtual void Dispose(bool disposing)
         {
